@@ -16,6 +16,7 @@
   --ink:#000000;--ink-2:#404040;--muted:#696969;
   --grid:#e4e5e7;--axis:#bababa;--border:rgba(0,0,0,.08);
   --op-sel:#1d4ed8;--op-a:#bababa;--op-b:#696969;
+  --c-TIM:#0026d9;--c-CLARO:#da291c;--c-VIVO:#660099;
   --ok:#0ca30c;--near:#fab219;--warn:#ec835a;--crit:#d03b3b;
   --ok-text:#006300;--crit-text:#c40022;--link:#1d4ed8;
   --shadow:0 2px 10px rgba(0,33,152,.06);
@@ -23,21 +24,36 @@
 @media (prefers-color-scheme:dark){
   :root:where(:not([data-theme="light"])){
     color-scheme:dark;
-    --brand-tint:#172554;--page:#060d2b;--surface:#0d1844;--surface-2:#14205a;
-    --ink:#ffffff;--ink-2:#c9cfe6;--muted:#9aa3c4;
-    --grid:#1d2a66;--axis:#34437f;--border:rgba(255,255,255,.10);
+    --brand-tint:#1b2133;--page:#0e1014;--surface:#171a20;--surface-2:#20242c;
+    --ink:#ffffff;--ink-2:#c9ccd3;--muted:#9aa0aa;
+    --grid:#2a2f38;--axis:#3a404b;--border:rgba(255,255,255,.10);
     --op-sel:#6b8cff;--op-a:#7a84a8;--op-b:#b9c0db;--link:#99d6ff;
+    --c-TIM:#5c7bff;--c-CLARO:#ff6b5e;--c-VIVO:#b36bff;
     --ok-text:#0ca30c;--crit-text:#ff5c77;--shadow:none;
   }
 }
 :root[data-theme="dark"]{
   color-scheme:dark;
-  --brand-tint:#172554;--page:#060d2b;--surface:#0d1844;--surface-2:#14205a;
-  --ink:#ffffff;--ink-2:#c9cfe6;--muted:#9aa3c4;
-  --grid:#1d2a66;--axis:#34437f;--border:rgba(255,255,255,.10);
+  --brand-tint:#1b2133;--page:#0e1014;--surface:#171a20;--surface-2:#20242c;
+  --ink:#ffffff;--ink-2:#c9ccd3;--muted:#9aa0aa;
+  --grid:#2a2f38;--axis:#3a404b;--border:rgba(255,255,255,.10);
   --op-sel:#6b8cff;--op-a:#7a84a8;--op-b:#b9c0db;--link:#99d6ff;
+  --c-TIM:#5c7bff;--c-CLARO:#ff6b5e;--c-VIVO:#b36bff;
   --ok-text:#0ca30c;--crit-text:#ff5c77;--shadow:none;
 }
+/* Tema da operadora selecionada (as cores de situação não mudam) */
+:root[data-op="TIM"]{--brand-blue:#0026d9;--brand-blue-dark:#002198;--brand-blue-deep:#0221b1;--brand-sky:#99d6ff;--brand-tint:#e6ebfc;--op-sel:#0026d9;--link:#0026d9}
+:root[data-op="CLARO"]{--brand-blue:#da291c;--brand-blue-dark:#a51d13;--brand-blue-deep:#c0231a;--brand-sky:#ffd6d1;--brand-tint:#fdeceb;--op-sel:#da291c;--link:#c0231a}
+:root[data-op="VIVO"]{--brand-blue:#660099;--brand-blue-dark:#4b0072;--brand-blue-deep:#57007f;--brand-sky:#e6cbf7;--brand-tint:#f3e9fa;--op-sel:#660099;--link:#660099}
+@media (prefers-color-scheme:dark){
+  :root[data-op="TIM"]:where(:not([data-theme="light"])){--brand-tint:#141d4a;--op-sel:#5c7bff;--link:#99d6ff}
+  :root[data-op="CLARO"]:where(:not([data-theme="light"])){--brand-tint:#3a1512;--op-sel:#ff6b5e;--link:#ff9a90}
+  :root[data-op="VIVO"]:where(:not([data-theme="light"])){--brand-tint:#2c1240;--op-sel:#b36bff;--link:#d3a8ff}
+}
+:root[data-theme="dark"][data-op="TIM"]{--brand-tint:#141d4a;--op-sel:#5c7bff;--link:#99d6ff}
+:root[data-theme="dark"][data-op="CLARO"]{--brand-tint:#3a1512;--op-sel:#ff6b5e;--link:#ff9a90}
+:root[data-theme="dark"][data-op="VIVO"]{--brand-tint:#2c1240;--op-sel:#b36bff;--link:#d3a8ff}
+.top,.tile.hero,button,.seg,.seg button,.insight{transition:background-color .25s,border-color .25s,color .25s}
 *{box-sizing:border-box}
 body{margin:0;background:var(--page);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 .nav{background:#fff;border-bottom:1px solid rgba(0,0,0,.06)}
@@ -228,7 +244,7 @@ const st={rg:'',uf:'',f:1,op:'TIM'};
 try{const q=new URLSearchParams(location.search).get('op');if(q&&OPL[q.toUpperCase()])st.op=q.toUpperCase();}catch(e){}
 const opn=()=>OPL[st.op];
 const others=()=>OPS.filter(o=>o.k!==st.op);
-const opColor=k=>k===st.op?'--op-sel':(others()[0].k===k?'--op-a':'--op-b');
+const opColor=k=>'--c-'+k;
 const req=m=>Math.ceil(m.pop*st.f/D.meta.dens);
 const tierOf=r=>r>=1?'OK':r>=.75?'NEAR':r>=.5?'WARN':'CRIT';
 function view(op){ // municípios do compromisso da operadora com cálculo
@@ -237,7 +253,7 @@ function view(op){ // municípios do compromisso da operadora com cálculo
 
 // filtros
 const fRg=document.getElementById('f-rg'),fUf=document.getElementById('f-uf'),fOp=document.getElementById('f-op');
-fOp.value=st.op;fOp.onchange=()=>{st.op=fOp.value;render();};
+fOp.value=st.op;fOp.onchange=()=>{st.op=fOp.value;try{const u=new URL(location.href);u.searchParams.set('op',st.op);history.replaceState(null,'',u);}catch(e){}render();};
 const opts=(s,l,a)=>{s.innerHTML=`<option value="">${a}</option>`+l.map(x=>`<option>${esc(x)}</option>`).join('');};
 opts(fRg,[...new Set(D.mun.map(m=>m.rg))].sort(),'Todas');
 function ufOpts(){const u=[...new Set(D.mun.filter(m=>!st.rg||m.rg===st.rg).map(m=>m.uf))].sort();opts(fUf,u,'Todas');if(!u.includes(st.uf))st.uf='';fUf.value=st.uf;}
@@ -375,7 +391,7 @@ const fmtD=x=>x?x.split('-').reverse().join('/'):'–';
 document.getElementById('foot').textContent=`Fontes: Anatel (compromissos do Edital 5G, publicado em ${fmtD(D.meta.datas.compromissos)}; estações licenciadas do SMP, publicado em ${fmtD(D.meta.datas.estacoes)}) e IBGE (estimativa 2020 e Censo 2022). Atualizado em ${fmtD(D.meta.gerado)}. Painel independente com dados públicos; não representa posição oficial da Anatel nem de operadoras.`;
 
 const cur=()=>view(st.op);
-function render(){const V=cur();page=0;document.getElementById('h-sit').textContent='Situação dos municípios · '+opn();kpis(V);bench();tiers(V);byUF(V);mapRender(V);table(V);}
+function render(){document.documentElement.dataset.op=st.op;const V=cur();page=0;document.getElementById('h-sit').textContent='Situação dos municípios · '+opn();kpis(V);bench();tiers(V);byUF(V);mapRender(V);table(V);}
 render();
 })();
 </script>
