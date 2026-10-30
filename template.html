@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Meta 5G 2027</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="description" content="Painel independente, feito com dados públicos da Anatel e do IBGE, sobre a meta de 31/07/2027 do Edital 5G (3,5 GHz).">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{
+  color-scheme:light;
+  --brand-blue:#1d4ed8;--brand-blue-dark:#1e3a8a;--brand-blue-deep:#1e40af;--brand-sky:#bfdbfe;
+  --brand-tint:#e8eefc;
+  --page:#f0f1f2;--surface:#ffffff;--surface-2:#f0f1f2;
+  --ink:#000000;--ink-2:#404040;--muted:#696969;
+  --grid:#e4e5e7;--axis:#bababa;--border:rgba(0,0,0,.08);
+  --op-sel:#1d4ed8;--op-a:#bababa;--op-b:#696969;
+  --ok:#0ca30c;--near:#fab219;--warn:#ec835a;--crit:#d03b3b;
+  --ok-text:#006300;--crit-text:#c40022;--link:#1d4ed8;
+  --shadow:0 2px 10px rgba(0,33,152,.06);
+}
+@media (prefers-color-scheme:dark){
+  :root:where(:not([data-theme="light"])){
+    color-scheme:dark;
+    --brand-tint:#172554;--page:#060d2b;--surface:#0d1844;--surface-2:#14205a;
+    --ink:#ffffff;--ink-2:#c9cfe6;--muted:#9aa3c4;
+    --grid:#1d2a66;--axis:#34437f;--border:rgba(255,255,255,.10);
+    --op-sel:#6b8cff;--op-a:#7a84a8;--op-b:#b9c0db;--link:#99d6ff;
+    --ok-text:#0ca30c;--crit-text:#ff5c77;--shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --brand-tint:#172554;--page:#060d2b;--surface:#0d1844;--surface-2:#14205a;
+  --ink:#ffffff;--ink-2:#c9cfe6;--muted:#9aa3c4;
+  --grid:#1d2a66;--axis:#34437f;--border:rgba(255,255,255,.10);
+  --op-sel:#6b8cff;--op-a:#7a84a8;--op-b:#b9c0db;--link:#99d6ff;
+  --ok-text:#0ca30c;--crit-text:#ff5c77;--shadow:none;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.nav{background:#fff;border-bottom:1px solid rgba(0,0,0,.06)}
+.nav .in{max-width:1200px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:16px;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:12px;color:#000;font-size:14px}
+.logo .w{font-weight:800;font-size:22px;letter-spacing:-.02em;color:var(--brand-blue);line-height:1}
+.logo .sep{width:1px;height:22px;background:#d9d9d9}
+.nav .tag{font-size:13px;color:#696969}
+.top{background:var(--brand-blue);color:#fff;position:relative;overflow:hidden}
+.top::before{content:"";position:absolute;right:-120px;top:-160px;width:520px;height:520px;border-radius:50%;background:var(--brand-blue-dark);opacity:.55}
+.top::after{content:"";position:absolute;right:120px;bottom:-220px;width:360px;height:360px;border-radius:50%;background:var(--brand-blue-deep);opacity:.6}
+.top .in{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:36px 16px 40px;display:flex;flex-wrap:wrap;gap:24px;align-items:flex-end;justify-content:space-between}
+.eyebrow{font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--brand-sky)}
+.top h1{margin:8px 0 10px;font-size:40px;line-height:1.1;font-weight:300;letter-spacing:-.02em}
+.top h1 b{font-weight:700}
+.top p{margin:0;max-width:640px;font-size:16px;font-weight:300;opacity:.95}
+.count{background:#fff;color:var(--brand-blue);border-radius:16px;padding:16px 22px;min-width:210px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.count .n{font-size:48px;font-weight:700;line-height:1}
+.count .l{font-size:13px;color:#404040}
+.wrap{max-width:1200px;margin:0 auto;padding:0 16px 48px}
+.bar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;padding:16px;margin:-22px 0 0;position:sticky;top:8px;z-index:1100;background:var(--surface);border-radius:16px;box-shadow:0 6px 20px rgba(0,33,152,.12)}
+@media (max-width:640px){.bar{position:relative;top:auto}}
+.bar label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px;font-weight:600}
+select,input[type=search]{font:inherit;font-size:14px;padding:9px 12px;border:1px solid #bababa;border-radius:12px;background:var(--surface);color:var(--ink);min-width:150px}
+select:focus,input:focus,button:focus-visible{outline:2px solid var(--brand-blue);outline-offset:1px}
+button{font:inherit;font-size:14px;padding:9px 18px;border:1.5px solid var(--brand-blue);border-radius:12px;background:var(--surface);color:var(--link);cursor:pointer;font-weight:700}
+button:hover{background:var(--brand-tint)}
+button.primary{background:var(--brand-blue);color:#fff}
+button.primary:hover{background:var(--brand-blue-dark)}
+button[disabled]{opacity:.35;cursor:default}
+.seg{display:inline-flex;border:1.5px solid var(--brand-blue);border-radius:12px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;border-radius:0;color:var(--link);font-weight:600;padding:8px 14px}
+.seg button.on{background:var(--brand-blue);color:#fff}
+section{margin-top:28px}
+h2{font-size:20px;margin:0 0 4px;font-weight:700;color:var(--ink);letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0 0 14px;font-size:14px}
+.card{background:var(--surface);border-radius:16px;padding:22px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.grid{display:grid;gap:14px}
+.kpis{grid-template-columns:1.35fr repeat(4,1fr)}
+@media (max-width:980px){.kpis{grid-template-columns:repeat(2,1fr)}.kpis .hero{grid-column:1/-1}}
+.tile .lbl{font-size:13px;color:var(--muted);font-weight:600}
+.tile .val{font-size:32px;font-weight:700;margin-top:4px;color:var(--ink);letter-spacing:-.01em}
+.tile .note{font-size:13px;color:var(--muted)}
+.tile.hero{background:var(--brand-blue);color:#fff;border:0;position:relative;overflow:hidden}
+.tile.hero::after{content:"";position:absolute;right:-40px;bottom:-60px;width:160px;height:160px;border-radius:50%;background:var(--brand-blue-dark);opacity:.7}
+.tile.hero>*{position:relative;z-index:1}
+.tile.hero .lbl,.tile.hero .note{color:rgba(255,255,255,.85)}
+.tile.hero .val{font-size:60px;line-height:1.02;color:#fff}
+.insight{margin-top:14px;padding:16px 20px;border-radius:16px;background:var(--brand-tint);font-size:15px;border-left:4px solid var(--brand-blue)}
+.insight b{color:var(--ink)}
+.two{grid-template-columns:1fr 1fr}
+@media (max-width:860px){.two{grid-template-columns:1fr}}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--ink-2);margin:6px 0 10px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--surface-2);white-space:nowrap;color:var(--ink)}
+.chart{position:relative;width:100%}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart text{fill:var(--muted);font-size:11px;font-family:inherit}
+.chart text.lab{fill:var(--ink-2);font-size:12px}
+.chart text.val{fill:var(--ink);font-size:12px;font-weight:700}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:12px;box-shadow:0 8px 24px rgba(0,33,152,.18);display:none;z-index:10;min-width:170px;color:var(--ink)}
+.tip .r{display:flex;justify-content:space-between;gap:12px}
+#map{height:460px;border-radius:12px;background:var(--surface-2)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--grid);vertical-align:middle}
+th{font-size:12px;color:var(--muted);font-weight:700;cursor:pointer;white-space:normal;line-height:1.25;user-select:none;vertical-align:bottom;max-width:92px}
+th:first-child,th:nth-child(3){max-width:none}
+.prog{min-width:100px!important}
+td,th{padding:10px 6px}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+tbody tr:hover td{background:var(--brand-tint)}
+.tbl-wrap{overflow-x:auto}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;justify-content:space-between;margin-bottom:12px}
+.pager{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--muted);margin-top:12px}
+.prog{display:flex;align-items:center;gap:8px;min-width:120px}
+.prog .t{flex:1;height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden;min-width:60px}
+.prog .t span{display:block;height:100%;border-radius:0 3px 3px 0}
+.method{font-size:14px;color:var(--ink-2)}
+.method li{margin-bottom:8px}
+.crit{color:var(--crit-text);font-weight:700}
+.okt{color:var(--ok-text);font-weight:700}
+.empty{color:var(--muted);font-size:13px;padding:8px 0}
+.hint{flex-basis:100%;font-size:13px;color:var(--ink-2);background:var(--surface-2);border-radius:10px;padding:8px 12px}
+th.cmp,td.cmp{border-left:2px solid var(--grid)}
+th[title]{text-decoration:underline dotted var(--axis);text-underline-offset:3px}
+.leaflet-control-layers-separator,.leaflet-control-layers-overlays{display:none}
+.leaflet-control-layers-expanded{padding:6px 10px;border-radius:10px;font:13px/1.6 inherit}
+.tag{font-size:11px;color:var(--muted);margin-top:2px}
+.foot{background:var(--brand-blue-dark);color:rgba(255,255,255,.85);font-size:12px;margin-top:40px}
+.foot .in{max-width:1200px;margin:0 auto;padding:18px 16px}
+</style>
+</head>
+<body>
+<div class="nav"><div class="in">
+  <div class="logo"><span class="w">Meta 5G</span><span class="sep"></span><span>Painel público · Edital 5G</span></div>
+  <span class="tag">Dados públicos · Anatel e IBGE</span>
+</div></div>
+<div class="top"><div class="in">
+  <div>
+    <div class="eyebrow">Compromisso de abrangência 5G · 3,5 GHz</div>
+    <h1>Meta 5G <b>31/07/2027</b></h1>
+    <p>Os municípios da lista oficial do edital para este prazo (em regra, os com mais de 100 mil habitantes) precisam ter pelo menos 1 site 5G (ERB, no termo do edital) a cada 15 mil habitantes. Estimativa independente, calculada só com dados públicos da Anatel e do IBGE.</p>
+  </div>
+  <div class="count"><div class="n" id="days"></div><div class="l">dias até o prazo · <span id="months"></span></div></div>
+</div></div>
+
+<div class="wrap">
+<div class="bar" role="group" aria-label="Filtros">
+  <label>Operadora<select id="f-op"><option value="TIM">TIM</option><option value="CLARO">Claro</option><option value="VIVO">Vivo</option></select></label>
+  <label>Região<select id="f-rg"></select></label>
+  <label>UF<select id="f-uf"></select></label>
+  <label>Como calcular a meta de sites
+    <span class="seg" id="f-fx"><button data-f="1" class="on">Regra geral do edital</button><button data-f="1.25">Regra geral + 25%</button></span></label>
+  <button id="f-reset" class="">Limpar filtros</button>
+  <div class="hint" id="f-hint"></div>
+</div>
+
+<section><div class="grid kpis" id="kpis"></div><div class="insight" id="insight"></div></section>
+
+<section class="grid two">
+  <div class="card">
+    <h2>Comparação entre operadoras</h2>
+    <p class="sub">A mesma regra aplicada aos mesmos municípios com base nos sites 5G que cada operadora tem licenciados hoje.</p>
+    <div class="chart" id="bench"></div>
+  </div>
+  <div class="card">
+    <h2 id="h-sit">Situação dos municípios</h2>
+    <p class="sub">Sites licenciados da operadora escolhida em relação à quantidade exigida no município.</p>
+    <div class="legend" id="tier-legend"></div>
+    <div class="chart" id="tiers"></div>
+    <h2 style="margin-top:18px">Sites faltando por UF</h2>
+    <p class="sub">Soma do que falta nos municípios abaixo da meta.</p>
+    <div class="chart" id="byuf"></div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Mapa</h2>
+  <p class="sub">Cada ponto é a sede de um município do compromisso. A cor mostra a situação e o tamanho, quantos sites faltam. Clique no mapa para ativar o zoom pela rolagem.</p>
+  <div id="map"></div>
+</section>
+
+<section class="card">
+  <div class="toolbar">
+    <div><h2>Municípios do compromisso</h2><p class="sub" style="margin:0">Todas as contagens são de <b>sites 5G de 3,5 GHz licenciados na Anatel</b> dentro do município. As duas últimas colunas mostram quantos sites as outras operadoras têm na mesma cidade, só para comparação. Use o código IBGE para cruzar com outras bases.</p></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+      <select id="t-tier" aria-label="Situação"></select>
+      <input type="search" id="t-q" placeholder="Buscar município">
+      <button id="t-csv" class="primary">Exportar CSV</button>
+    </div>
+  </div>
+  <div class="tbl-wrap"><table id="detail"></table></div>
+  <div class="pager" id="pager"></div>
+</section>
+
+<section class="card method">
+  <h2>Como foi calculado</h2>
+  <ul id="method"></ul>
+</section>
+</div>
+<div class="foot"><div class="in" id="foot"></div></div>
+
+<script id="data" type="application/json">/*DATA*/</script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+const D=JSON.parse(document.getElementById('data').textContent);
+const TODAY=new Date(new Date().toDateString()),PZ=new Date(D.meta.prazo+'T00:00:00');
+const days=Math.max(0,Math.round((PZ-TODAY)/864e5)),months=days/30.44;
+const nf=new Intl.NumberFormat('pt-BR');const n1=v=>v.toLocaleString('pt-BR',{maximumFractionDigits:1});
+const pf=v=>isFinite(v)?Math.round(v*100)+'%':'–';
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+document.getElementById('days').textContent=nf.format(days);
+document.getElementById('months').textContent='cerca de '+Math.round(months)+' meses';
+
+const TIERS=[
+ {k:'OK',l:'Meta atingida',d:'≥ 100% dos sites exigidos',c:'--ok',i:'✓'},
+ {k:'NEAR',l:'Quase lá',d:'75–99%',c:'--near',i:'◐'},
+ {k:'WARN',l:'Atenção',d:'50–74%',c:'--warn',i:'▲'},
+ {k:'CRIT',l:'Crítico',d:'< 50%',c:'--crit',i:'✕'}];
+const TK=Object.fromEntries(TIERS.map(t=>[t.k,t]));
+const OPS=[{k:'TIM',l:'TIM'},{k:'CLARO',l:'Claro'},{k:'VIVO',l:'Vivo'}];
+const OPL=Object.fromEntries(OPS.map(o=>[o.k,o.l]));
+
+const st={rg:'',uf:'',f:1,op:'TIM'};
+try{const q=new URLSearchParams(location.search).get('op');if(q&&OPL[q.toUpperCase()])st.op=q.toUpperCase();}catch(e){}
+const opn=()=>OPL[st.op];
+const others=()=>OPS.filter(o=>o.k!==st.op);
+const opColor=k=>k===st.op?'--op-sel':(others()[0].k===k?'--op-a':'--op-b');
+const req=m=>Math.ceil(m.pop*st.f/D.meta.dens);
+const tierOf=r=>r>=1?'OK':r>=.75?'NEAR':r>=.5?'WARN':'CRIT';
+function view(op){ // municípios do compromisso da operadora com cálculo
+  return D.mun.filter(m=>m.ops[op]&&(!st.rg||m.rg===st.rg)&&(!st.uf||m.uf===st.uf)).map(m=>{const q=req(m),n=m['n_'+op];return {...m,req:q,n,gap:Math.max(0,q-n),ratio:n/q,tier:tierOf(n/q)};});
+}
+
+// filtros
+const fRg=document.getElementById('f-rg'),fUf=document.getElementById('f-uf'),fOp=document.getElementById('f-op');
+fOp.value=st.op;fOp.onchange=()=>{st.op=fOp.value;render();};
+const opts=(s,l,a)=>{s.innerHTML=`<option value="">${a}</option>`+l.map(x=>`<option>${esc(x)}</option>`).join('');};
+opts(fRg,[...new Set(D.mun.map(m=>m.rg))].sort(),'Todas');
+function ufOpts(){const u=[...new Set(D.mun.filter(m=>!st.rg||m.rg===st.rg).map(m=>m.uf))].sort();opts(fUf,u,'Todas');if(!u.includes(st.uf))st.uf='';fUf.value=st.uf;}
+ufOpts();
+fRg.onchange=()=>{st.rg=fRg.value;ufOpts();render();};
+fUf.onchange=()=>{st.uf=fUf.value;render();};
+const HINT={1:'<b>Regra geral do edital:</b> o município precisa de 1 site 5G para cada 15 mil habitantes. Exemplo: 150 mil habitantes exigem 10 sites.',
+ 1.25:'<b>Regra geral + 25% (cenário de estresse):</b> simula 25% a mais de sites, adicional citado para os lotes D33 a D36. Exemplo: 150 mil habitantes passam a exigir 13 sites. É pouco provável que se aplique, porque a base da Anatel não traz quantidade extra para esses lotes.'};
+const setHint=()=>document.getElementById('f-hint').innerHTML=HINT[st.f];setHint();
+document.querySelectorAll('#f-fx button').forEach(b=>b.onclick=()=>{st.f=+b.dataset.f;document.querySelectorAll('#f-fx button').forEach(x=>x.classList.toggle('on',x===b));setHint();render();});
+document.getElementById('f-reset').onclick=()=>{st.rg=st.uf='';fRg.value='';ufOpts();render();};
+
+const tipEl=box=>{const t=document.createElement('div');t.className='tip';box.appendChild(t);return t;};
+function placeTip(tip,box,e){const b=box.getBoundingClientRect();const x=e.clientX-b.left,y=e.clientY-b.top;tip.style.display='block';const w=tip.offsetWidth,h=tip.offsetHeight;let l=x+14;if(l+w>box.clientWidth)l=x-w-14;tip.style.left=Math.max(0,l)+'px';tip.style.top=Math.max(0,y-h/2)+'px';}
+function hover(box,sel,html){const tip=tipEl(box);box.querySelectorAll(sel).forEach(n=>{n.addEventListener('mousemove',e=>{tip.innerHTML=html(n);placeTip(tip,box,e);});n.addEventListener('mouseleave',()=>tip.style.display='none');});}
+
+const gap22=V=>V.reduce((a,m)=>a+Math.max(0,Math.ceil(m.pop22*st.f/D.meta.dens)-m.n),0);
+function kpis(V){
+  const N=V.length,ok=V.filter(m=>m.tier==='OK').length,gap=V.reduce((a,m)=>a+m.gap,0);
+  const reqT=V.reduce((a,m)=>a+m.req,0),lic=V.reduce((a,m)=>a+m.n,0),below=N-ok;
+  const pace=gap/Math.max(months,.5);
+  document.getElementById('kpis').innerHTML=`
+   <div class="card tile hero"><div class="lbl">Sites 5G que faltam para cumprir a meta</div><div class="val">${nf.format(gap)}</div><div class="note">em ${nf.format(below)} município(s) abaixo da meta · pelo Censo 2022 seriam ${nf.format(gap22(V))}</div></div>
+   <div class="card tile"><div class="lbl">Municípios no compromisso</div><div class="val">${nf.format(N)}</div><div class="note">prazo 31/07/2027</div></div>
+   <div class="card tile"><div class="lbl">✓ Já atingem a meta</div><div class="val">${nf.format(ok)}</div><div class="note">${pf(ok/N)} dos municípios</div></div>
+   <div class="card tile"><div class="lbl">Sites ${opn()} licenciados × exigidos</div><div class="val">${nf.format(lic)}</div><div class="note">exigidos: ${nf.format(reqT)}</div></div>
+   <div class="card tile"><div class="lbl">Ritmo necessário</div><div class="val">${n1(pace)}</div><div class="note">sites por mês · ≈ ${n1(pace/4.35)} por semana até o prazo</div></div>`;
+  const worst=[...V].sort((a,b)=>b.gap-a.gap).slice(0,3).filter(m=>m.gap);
+  const cmp=others().map(o=>{const W=view(o.k);return `a ${o.l} em ${pf(W.filter(m=>m.tier==='OK').length/W.length)}`;});
+  document.getElementById('insight').innerHTML=!N?'<span class="empty">Sem municípios para este filtro.</span>':
+   (lic>=reqT&&below?`<b>A ${opn()} já tem ${nf.format(lic)} sites 5G licenciados nesses municípios, mais que os ${nf.format(reqT)} exigidos no total.</b> O problema é a distribuição: ${nf.format(below)} municípios ainda estão abaixo da meta. `:
+    below?`<b>Faltam ${nf.format(gap)} sites em ${nf.format(below)} municípios.</b> `:`<span class="okt">✓ Todos os municípios deste filtro já atingem a meta.</span> `)+
+   (worst.length?`Maiores gaps: ${worst.map(m=>`${esc(m.mu)}/${m.uf} (faltam ${m.gap})`).join(', ')}. `:'')+
+   `Na mesma regra, já cumprem a meta ${cmp.join(' e ')} dos seus municípios, contra ${pf(ok/N)} da ${opn()}.`;
+}
+
+function bench(){
+  const el=document.getElementById('bench');
+  const rows=OPS.map(o=>{const V=view(o.k);return {o,N:V.length,ok:V.filter(m=>m.tier==='OK').length,gap:V.reduce((a,m)=>a+m.gap,0),lic:V.reduce((a,m)=>a+m.n,0),req:V.reduce((a,m)=>a+m.req,0)};});
+  const W=520,L=56,R=70,rowH=30;const blocks=[
+    {t:'% dos municípios com a meta atingida',v:r=>r.N?r.ok/r.N:0,fmt:(v,r)=>pf(v),max:1},
+    {t:'Sites que faltam',v:r=>r.gap,fmt:v=>nf.format(v),max:Math.max(1,...rows.map(r=>r.gap))}];
+  let y=0,svg='';const hits=[];
+  blocks.forEach(b=>{svg+=`<text class="lab" x="0" y="${y+12}" style="font-weight:600">${b.t}</text>`;y+=22;
+    rows.forEach(r=>{const v=b.v(r),w=Math.max(6,(W-L-R)*v/b.max);
+      svg+=`<text class="lab" x="0" y="${y+13}">${r.o.l}</text><path d="M${L},${y+2}h${w-4}a4,4 0 0 1 4,4v8a4,4 0 0 1 -4,4h-${w-4}z" fill="var(${opColor(r.o.k)})" data-h="${hits.length}"/><text class="val" x="${L+w+8}" y="${y+14}">${b.fmt(v,r)}</text>`;
+      hits.push(r);y+=rowH;});y+=10;});
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${y}" role="img" aria-label="Comparação entre operadoras">${svg}</svg>`;
+  hover(el,'[data-h]',n=>{const r=hits[+n.dataset.h];return `<b>${r.o.l}</b><div class="r"><span>Municípios</span><span>${r.N}</span></div><div class="r"><span>✓ Na meta</span><b>${r.ok}</b></div><div class="r"><span>sites licenciados</span><span>${nf.format(r.lic)}</span></div><div class="r"><span>sites exigidos</span><span>${nf.format(r.req)}</span></div><div class="r"><span>Faltam</span><b>${nf.format(r.gap)}</b></div>`;});
+}
+
+function tiers(V){
+  const el=document.getElementById('tiers');
+  document.getElementById('tier-legend').innerHTML=TIERS.map(t=>`<span><span class="dot" style="background:var(${t.c})"></span>${t.i} ${t.l} <span style="color:var(--muted)">(${t.d})</span></span>`).join('');
+  if(!V.length){el.innerHTML='';return;}
+  const W=520,H=34;let x=0,svg='';const parts=TIERS.map(t=>[t,V.filter(m=>m.tier===t.k)]).filter(p=>p[1].length);
+  parts.forEach(([t,L],i)=>{const w=L.length/V.length*W,ww=Math.max(1,w-(i<parts.length-1?2:0));
+    svg+=`<rect x="${x}" y="0" width="${ww}" height="18" fill="var(${t.c})" data-t="${t.k}"/>`;
+    if(ww>34)svg+=`<text class="val" x="${x+4}" y="32">${L.length}</text>`;x+=w;});
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Distribuição por situação">${svg}</svg>`;
+  hover(el,'[data-t]',n=>{const t=TK[n.dataset.t];const L=V.filter(m=>m.tier===t.k);return `<b>${t.i} ${t.l}</b><div class="r"><span>Municípios</span><b>${L.length}</b></div><div class="r"><span>Sites faltando</span><span>${nf.format(L.reduce((a,m)=>a+m.gap,0))}</span></div>`;});
+}
+
+function byUF(V){
+  const el=document.getElementById('byuf');const by={};
+  V.forEach(m=>{const b=by[m.uf]=by[m.uf]||{g:0,n:0,b:0};b.n++;b.g+=m.gap;if(m.gap)b.b++;});
+  const rows=Object.entries(by).filter(e=>e[1].g).sort((a,b)=>b[1].g-a[1].g);
+  if(!rows.length){el.innerHTML='<div class="empty">✓ Nenhum site faltando para este filtro.</div>';return;}
+  const W=520,L=34,R=60,rowH=22,max=rows[0][1].g;let svg='';
+  rows.forEach(([uf,v],i)=>{const y=i*rowH,w=Math.max(6,(W-L-R)*v.g/max);svg+=`<text class="lab" x="0" y="${y+13}">${uf}</text><path d="M${L},${y+3}h${w-4}a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-${w-4}z" fill="var(--op-sel)" data-u="${i}"/><text class="val" x="${L+w+6}" y="${y+14}">${v.g}</text>`;});
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${rows.length*rowH}" role="img" aria-label="Sites faltando por UF">${svg}</svg>`;
+  hover(el,'[data-u]',n=>{const [uf,v]=rows[+n.dataset.u];return `<b>${uf}</b><div class="r"><span>Municípios</span><span>${v.n}</span></div><div class="r"><span>Abaixo da meta</span><span>${v.b}</span></div><div class="r"><span>Sites faltando</span><b>${v.g}</b></div>`;});
+}
+
+let map,layer;
+function mapRender(V){
+  const box=document.getElementById('map');
+  if(typeof L==='undefined'){box.innerHTML='<div class="empty" style="padding:16px">O mapa não carregou porque a biblioteca Leaflet não está acessível nesta rede. Os demais blocos funcionam normalmente.</div>';return;}
+  if(!map){map=L.map(box,{preferCanvas:true,scrollWheelZoom:false}).setView([-12,-50],4);
+    map.on('click',()=>map.scrollWheelZoom.enable());map.on('mouseout',()=>map.scrollWheelZoom.disable());
+    const dark=document.documentElement.dataset.theme==='dark'||(document.documentElement.dataset.theme!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);
+    map.createPane('labels');map.getPane('labels').style.zIndex=350;map.getPane('labels').style.pointerEvents='none';
+    const esri=(svc,o={})=>L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/${svc}/MapServer/tile/{z}/{y}/{x}`,{maxZoom:18,...o});
+    const bases={
+      'Mapa simples':esri(`Canvas/${dark?'World_Dark_Gray_Base':'World_Light_Gray_Base'}`,{attribution:'Mapa-base © Esri',maxZoom:16}),
+      'Ruas':esri('World_Street_Map',{attribution:'Mapa de ruas © Esri, HERE, Garmin, OpenStreetMap'}),
+      'Satélite':L.layerGroup([esri('World_Imagery',{attribution:'Imagens © Esri, Maxar, Earthstar Geographics'}),esri('Reference/World_Boundaries_and_Places',{pane:'labels'})])
+    };
+    bases['Mapa simples'].addTo(map);
+    L.control.layers(bases,null,{collapsed:false,position:'topright'}).addTo(map);
+    layer=L.layerGroup().addTo(map);}
+  layer.clearLayers();const order=['OK','NEAR','WARN','CRIT'];const pts=[...V].sort((a,b)=>order.indexOf(a.tier)-order.indexOf(b.tier));
+  pts.forEach(m=>{const t=TK[m.tier];L.circleMarker([m.la,m.ln],{radius:4+Math.min(10,Math.sqrt(m.gap)*2),color:css('--surface'),weight:1.5,fillColor:css(t.c),fillOpacity:.95})
+    .bindPopup(`<b>${esc(m.mu)}</b> · ${m.uf}<br>População (IBGE 2020): ${nf.format(m.pop)}<br>sites exigidos: <b>${m.req}</b> · Sites ${opn()} licenciados: <b>${m.n}</b><br>${t.i} ${t.l}${m.gap?` · faltam <b>${m.gap}</b>`:''}<br><span style="color:#7a879b">${others().map(o=>`${o.l}: ${m['n_'+o.k]}`).join(' · ')}</span>`).addTo(layer);});
+  if(V.length&&(st.uf||st.rg))map.fitBounds(V.map(m=>[m.la,m.ln]),{padding:[24,24],maxZoom:8});else map.setView([-12,-50],4);
+}
+
+const tq=document.getElementById('t-q'),tt=document.getElementById('t-tier');
+tt.innerHTML='<option value="">Todas as situações</option>'+TIERS.map(t=>`<option value="${t.k}">${t.i} ${t.l}</option>`).join('');
+let sortK='gap',dir=-1,page=0;const PS=40;
+const COLS=()=>{const o=opn(),[a,b]=others();return [['tier','Situação'],['uf','UF'],['mu','Município'],['ib','Cód. IBGE',1],['pop','População',1,'Estimativa IBGE 2020, a mesma base da lista oficial do edital'],['req','Sites exigidos',1,'Meta do município pela regra escolhida no topo'],['n',`Sites ${o}`,1,`Sites 5G 3,5 GHz da ${o} licenciados na Anatel no município`],['gap',`Faltam (${o})`,1,`Sites exigidos menos sites ${o}, quando positivo`],['ratio',`% da meta (${o})`,0,`Sites ${o} ÷ sites exigidos`],['n_'+a.k,`Sites ${a.l}`,1,`Sites 5G 3,5 GHz da ${a.l} licenciados no mesmo município (comparação)`,'cmp'],['n_'+b.k,`Sites ${b.l}`,1,`Sites 5G 3,5 GHz da ${b.l} licenciados no mesmo município (comparação)`]];};
+const rowsT=V=>{const q=tq.value.trim().toLowerCase();return V.filter(m=>(!tt.value||m.tier===tt.value)&&(!q||m.mu.toLowerCase().includes(q)));};
+function table(V){
+  const R=rowsT(V).sort((a,b)=>{const k=sortK==='tier'?'ratio':sortK;const x=a[k],y=b[k];return (x>y?1:x<y?-1:0)*dir||a.mu.localeCompare(b.mu);});
+  const pages=Math.max(1,Math.ceil(R.length/PS));page=Math.min(page,pages-1);const S=R.slice(page*PS,page*PS+PS);
+  document.getElementById('detail').innerHTML=`<thead><tr>${COLS().map(([k,l,n,t,c])=>`<th data-k="${k}" class="${n?'num':''} ${c||''}" title="${t||''}">${l}${sortK===k?(dir>0?' ↑':' ↓'):''}</th>`).join('')}</tr></thead><tbody>${S.map(m=>{const t=TK[m.tier];return `<tr>
+   <td><span class="badge"><span class="dot" style="background:var(${t.c})"></span>${t.i} ${t.l}</span></td><td>${m.uf}</td><td>${esc(m.mu)}${m.ops[st.op]&&m.ops[st.op].ant?`<div class="tag">antecipado do marco de 2029</div>`:''}</td><td class="num">${m.ib}</td><td class="num">${nf.format(m.pop)}</td><td class="num">${m.req}</td><td class="num"><b>${m.n}</b></td><td class="num">${m.gap?`<span class="crit">${m.gap}</span>`:'<span class="okt">0</span>'}</td>
+   <td><div class="prog"><div class="t"><span style="width:${Math.min(100,m.ratio*100)}%;background:var(${t.c})"></span></div>${pf(m.ratio)}</div></td><td class="num cmp">${m['n_'+others()[0].k]}</td><td class="num">${m['n_'+others()[1].k]}</td></tr>`;}).join('')||'<tr><td colspan="11" class="empty">Nenhum município.</td></tr>'}</tbody>`;
+  document.querySelectorAll('#detail th').forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(sortK===k)dir*=-1;else{sortK=k;dir=['mu','uf'].includes(k)?1:-1;}table(cur());});
+  document.getElementById('pager').innerHTML=`<button id="pp" ${page?'':'disabled'}>‹ Anterior</button><span>Página ${page+1} de ${pages} · ${R.length} municípios</span><button id="pn" ${page<pages-1?'':'disabled'}>Próxima ›</button>`;
+  document.getElementById('pp').onclick=()=>{page--;table(cur());};document.getElementById('pn').onclick=()=>{page++;table(cur());};
+}
+tq.oninput=()=>{page=0;table(cur());};tt.onchange=()=>{page=0;table(cur());};
+document.getElementById('t-csv').onclick=()=>{
+  const R=rowsT(cur());const q=v=>{v=String(v??'');return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
+  const [oa,ob]=others();const H=['operadora','uf','municipio','cod_ibge','populacao_ibge2020','sites_exigidos','sites_licenciados','sites_faltando','pct_meta','situacao','sites_'+oa.k.toLowerCase(),'sites_'+ob.k.toLowerCase(),'regra_meta','populacao_censo2022'];
+  const lines=[H.join(';')].concat(R.map(m=>[opn(),m.uf,m.mu,m.ib,m.pop,m.req,m.n,m.gap,(m.ratio*100).toFixed(0),TK[m.tier].l,m['n_'+oa.k],m['n_'+ob.k],st.f===1?'regra geral 1 site/15 mil hab':'regra geral + 25%',m.pop22].map(q).join(';')));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+lines.join('\n')],{type:'text/csv;charset=utf-8'}));a.download='meta5g_2027_'+st.op.toLowerCase()+'_'+D.meta.gerado+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+};
+
+document.getElementById('method').innerHTML=[
+ `<b>Regra oficial:</b> segundo a Anatel, "até 31/07/2027: atender os municípios com população igual ou superior a 100 mil habitantes (no mínimo 1 antena para cada 15 mil habitantes)". A lista de municípios de cada operadora é a do Anexo XIV-A do Edital 5G (faixa de 3,5 GHz), tirada da base oficial de compromissos da Anatel.`,
+ `<b>População usada:</b> estimativa populacional do IBGE para 2020. É a base que bate com a lista oficial: os municípios da lista têm 100 mil habitantes ou mais nessa estimativa, enquanto no Censo 2022 alguns ficam abaixo. As exceções são compromissos de marcos posteriores que a operadora antecipou, marcados como "antecipado" na tabela. O Censo 2022 aparece só para comparação, no destaque principal e no CSV.`,
+ `<b>Sites exigidos</b> = população (IBGE 2020) ÷ 15 mil, arredondado para cima. A Anatel não publica esse número por município nos dados abertos. Ele é calculado pela regra oficial.`,
+ `<b>Regra geral + 25%:</b> um resumo jurídico do edital cita 25% a mais de ERBs para os lotes D33 a D36. Porém, a cobertura do resultado do leilão informa que os compromissos desses lotes são os mesmos dos lotes B, e a base da Anatel não traz quantidade adicional. Por isso, essa opção é só um <b>cenário de estresse, pouco provável</b>.`,
+ `<b>Sites licenciados:</b> estações distintas da operadora com 5G NR na faixa de 3,5 GHz, contadas por município (código IBGE), segundo a base de estações licenciadas do SMP da Anatel. 5G em outras faixas (DSS) não entra, porque o compromisso é de 3,5 GHz.`,
+ `<b>Licenciado não é o mesmo que em operação.</b> A base pública mostra só o licenciamento. A apuração oficial usa fiscalização e informações das operadoras. Sites instalados recentemente podem ainda não aparecer na base por causa do prazo de publicação.`,
+ `<b>Compartilhamento de rede:</b> sites compartilhados licenciados em nome de outra operadora não entram na conta da operadora escolhida. Se a Anatel aceitar ERB compartilhada para o compromisso, o gap real pode ser menor.`,
+ `<b>Checagem de consistência:</b> com o mesmo cálculo, todos os municípios dos marcos de 2025 e 2026 que estão "em apuração" atingem a quantidade exigida, para as três operadoras. É só uma checagem fraca: a sobra nesses municípios é grande, a contagem é a atual e "em apuração" ainda não é uma decisão oficial.`,
+ `<b>Ritmo necessário</b> = sites que faltam ÷ meses até o prazo, supondo ritmo constante. É uma referência, não uma previsão.`,
+ `<b>Situação:</b> ✓ meta atingida (≥ 100%), ◐ quase lá (75–99%), ▲ atenção (50–74%), ✕ crítico (< 50%).`,
+ `<b>Aviso:</b> este é um painel independente, feito só com dados públicos. Não representa posição oficial da Anatel nem de nenhuma operadora.`
+].map(x=>`<li>${x}</li>`).join('');
+const fmtD=x=>x?x.split('-').reverse().join('/'):'–';
+document.getElementById('foot').textContent=`Fontes: Anatel (compromissos do Edital 5G, publicado em ${fmtD(D.meta.datas.compromissos)}; estações licenciadas do SMP, publicado em ${fmtD(D.meta.datas.estacoes)}) e IBGE (estimativa 2020 e Censo 2022). Atualizado em ${fmtD(D.meta.gerado)}. Painel independente com dados públicos; não representa posição oficial da Anatel nem de operadoras.`;
+
+const cur=()=>view(st.op);
+function render(){const V=cur();page=0;document.getElementById('h-sit').textContent='Situação dos municípios · '+opn();kpis(V);bench();tiers(V);byUF(V);mapRender(V);table(V);}
+render();
+})();
+</script>
+</body>
+</html>
