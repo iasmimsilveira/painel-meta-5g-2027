@@ -381,7 +381,9 @@ function mapRender(V){
     ctl.innerHTML=Object.entries(BASES).map(([k,b])=>`<label><input type="radio" name="base" value="${k}" ${k===base?'checked':''}> ${b.nome}</label>`).join('');
     ctl.addEventListener('change',e=>{base=e.target.value;styleOk=false;map.setStyle(BASES[base].style,{diff:false});});
     map.addControl({onAdd:()=>ctl,onRemove:()=>ctl.remove()},'top-right');
-    map.on('style.load',()=>{styleOk=true;origF={};addPoints();});
+    map.on('style.load',()=>{styleOk=true;origF={};
+      map.getStyle().layers.filter(l=>l.type==='symbol'&&l['source-layer']==='place').forEach(l=>map.setLayoutProperty(l.id,'text-field',['coalesce',['get','name:pt'],['get','name']]));
+      addPoints();});
     map.on('styledata',()=>{if(styleOk&&!map.getLayer('mun'))addPoints();});
     map.on('click','mun',e=>{const m=lastV.find(x=>x.ib===e.features[0].properties.ib);if(m)new maplibregl.Popup({offset:8}).setLngLat(e.lngLat).setHTML(popupHtml(m)).addTo(map);});
     map.on('mouseenter','mun',()=>map.getCanvas().style.cursor='pointer');
