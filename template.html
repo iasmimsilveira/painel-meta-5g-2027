@@ -6,7 +6,7 @@
 <title>Meta 5G 2027</title>
 <meta name="robots" content="noindex,nofollow">
 <meta name="description" content="Painel independente, feito com dados públicos da Anatel e do IBGE, sobre a meta de 31/07/2027 do Edital 5G (3,5 GHz).">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <style>
 :root{
   color-scheme:light;
@@ -140,8 +140,9 @@ tbody tr:hover td{background:var(--brand-tint)}
 .hint{flex-basis:100%;font-size:13px;color:var(--ink-2);background:var(--surface-2);border-radius:10px;padding:8px 12px}
 th.cmp,td.cmp{border-left:2px solid var(--grid)}
 th[title]{text-decoration:underline dotted var(--axis);text-underline-offset:3px}
-.leaflet-control-layers-separator,.leaflet-control-layers-overlays{display:none}
-.leaflet-control-layers-expanded{padding:6px 10px;border-radius:10px;font:13px/1.6 inherit}
+.base-switch{color-scheme:light;padding:6px 10px;font:13px/1.7 inherit;color:#222;background:#fff}
+.base-switch label{display:block;cursor:pointer}
+.maplibregl-popup-content{font:13px/1.5 inherit;color:#222;border-radius:10px}
 .tag{font-size:11px;color:var(--muted);margin-top:2px}
 .foot{background:var(--brand-blue-dark);color:rgba(255,255,255,.85);font-size:12px;margin-top:40px}
 .foot .in{max-width:1200px;margin:0 auto;padding:18px 16px}
@@ -193,7 +194,7 @@ th[title]{text-decoration:underline dotted var(--axis);text-underline-offset:3px
 
 <section class="card">
   <h2>Mapa</h2>
-  <p class="sub">Cada ponto é a sede de um município do compromisso. A cor mostra a situação e o tamanho, quantos sites faltam. Clique no mapa para ativar o zoom pela rolagem.</p>
+  <p class="sub">Cada ponto é a sede de um município do compromisso. A cor mostra a situação e o tamanho, quantos sites faltam. Use Cmd/Ctrl + rolagem para dar zoom.</p>
   <div id="map"></div>
 </section>
 
@@ -218,7 +219,7 @@ th[title]{text-decoration:underline dotted var(--axis);text-underline-offset:3px
 <div class="foot"><div class="in" id="foot"></div></div>
 
 <script id="data" type="application/json">/*DATA*/</script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script>
 (function(){
 const D=JSON.parse(document.getElementById('data').textContent);
@@ -328,27 +329,67 @@ function byUF(V){
   hover(el,'[data-u]',n=>{const [uf,v]=rows[+n.dataset.u];return `<b>${uf}</b><div class="r"><span>Municípios</span><span>${v.n}</span></div><div class="r"><span>Abaixo da meta</span><span>${v.b}</span></div><div class="r"><span>Sites faltando</span><b>${v.g}</b></div>`;});
 }
 
-let map,layer;
+let map,lastV=[],base='simples';
+const BRASIL=[[-74,-33.8],[-34.7,5.3]];
+const ESRI='https://server.arcgisonline.com/ArcGIS/rest/services/';
+const BASES={
+  simples:{nome:'Mapa simples',style:'https://tiles.openfreemap.org/styles/positron'},
+  ruas:{nome:'Ruas',style:'https://tiles.openfreemap.org/styles/liberty'},
+  satelite:{nome:'Satélite',style:{version:8,glyphs:'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',sources:{
+    img:{type:'raster',tiles:[ESRI+'World_Imagery/MapServer/tile/{z}/{y}/{x}'],tileSize:256,maxzoom:18,attribution:'Imagens © Esri, Maxar, Earthstar Geographics'},
+    omt:{type:'vector',url:'https://tiles.openfreemap.org/planet'}},
+    layers:[{id:'img',type:'raster',source:'img'},
+      {id:'limite_uf',type:'line',source:'omt','source-layer':'boundary',filter:['all',['==',['get','admin_level'],4],['!=',['get','maritime'],1]],paint:{'line-color':'rgba(255,255,255,.5)','line-width':.8}},
+      {id:'limite_pais',type:'line',source:'omt','source-layer':'boundary',filter:['all',['==',['get','admin_level'],2],['!=',['get','maritime'],1]],paint:{'line-color':'rgba(255,255,255,.8)','line-width':1.2}},
+      {id:'label_town',type:'symbol',source:'omt','source-layer':'place',minzoom:7,filter:['==',['get','class'],'town'],
+        layout:{'text-field':['get','name'],'text-font':['Noto Sans Regular'],'text-size':['interpolate',['linear'],['zoom'],7,11,12,14]},
+        paint:{'text-color':'#ffffff','text-halo-color':'rgba(0,0,0,.8)','text-halo-width':1.3}},
+      {id:'label_city',type:'symbol',source:'omt','source-layer':'place',minzoom:4,filter:['==',['get','class'],'city'],
+        layout:{'text-field':['get','name'],'text-font':['Noto Sans Bold'],'text-size':['interpolate',['linear'],['zoom'],4,11,10,16]},
+        paint:{'text-color':'#ffffff','text-halo-color':'rgba(0,0,0,.8)','text-halo-width':1.4}}]}}
+};
+function geo(V){
+  const order=['OK','NEAR','WARN','CRIT'];
+  return {type:'FeatureCollection',features:[...V].sort((a,b)=>order.indexOf(a.tier)-order.indexOf(b.tier)).map(m=>({type:'Feature',
+    geometry:{type:'Point',coordinates:[m.ln,m.la]},properties:{ib:m.ib,nome:m.mu,r:4+Math.min(10,Math.sqrt(m.gap)*2),c:css(TK[m.tier].c)}}))};
+}
+let styleOk=false,origF={};
+const PLACE=['label_city','label_city_capital','label_town','label_village','label_other'];
+function hideBaseNames(){ // evita o nome duplicado: some o rótulo do mapa onde já há o nosso
+  const names=['literal',lastV.map(m=>m.mu)];
+  PLACE.forEach(id=>{if(!map.getLayer(id))return;if(!(id in origF))origF[id]=map.getFilter(id);
+    const nao=['!',['in',['get','name'],names]];map.setFilter(id,origF[id]?['all',origF[id],nao]:nao);});
+}
+function addPoints(){
+  if(!styleOk)return;
+  const src=map.getSource('mun');
+  if(src)src.setData(geo(lastV));else map.addSource('mun',{type:'geojson',data:geo(lastV)});
+  if(!map.getLayer('mun'))map.addLayer({id:'mun',type:'circle',source:'mun',paint:{'circle-radius':['get','r'],'circle-color':['get','c'],'circle-opacity':.95,'circle-stroke-color':'#ffffff','circle-stroke-width':1.5}});
+  if(!map.getLayer('mun-nome'))map.addLayer({id:'mun-nome',type:'symbol',source:'mun',minzoom:5.5,
+    layout:{'text-field':['get','nome'],'text-font':['Noto Sans Bold'],'text-size':['interpolate',['linear'],['zoom'],5.5,11,10,14],'text-offset':[0,1.1],'text-anchor':'top','text-optional':true},
+    paint:{'text-color':base==='satelite'?'#ffffff':'#1a1a1a','text-halo-color':base==='satelite'?'rgba(0,0,0,.75)':'rgba(255,255,255,.95)','text-halo-width':1.6}});
+  hideBaseNames();
+}
+function popupHtml(m){const t=TK[m.tier];return `<b>${esc(m.mu)}</b> · ${m.uf}<br>População (IBGE 2020): ${nf.format(m.pop)}<br>Sites exigidos: <b>${m.req}</b> · Sites ${opn()} licenciados: <b>${m.n}</b><br>${t.i} ${t.l}${m.gap?` · faltam <b>${m.gap}</b>`:''}<br><span style="color:#7a879b">${others().map(o=>`${o.l}: ${m['n_'+o.k]}`).join(' · ')}</span>`;}
 function mapRender(V){
-  const box=document.getElementById('map');
-  if(typeof L==='undefined'){box.innerHTML='<div class="empty" style="padding:16px">O mapa não carregou porque a biblioteca Leaflet não está acessível nesta rede. Os demais blocos funcionam normalmente.</div>';return;}
-  if(!map){map=L.map(box,{preferCanvas:true,scrollWheelZoom:false}).setView([-12,-50],4);
-    map.on('click',()=>map.scrollWheelZoom.enable());map.on('mouseout',()=>map.scrollWheelZoom.disable());
-    const dark=document.documentElement.dataset.theme==='dark'||(document.documentElement.dataset.theme!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);
-    map.createPane('labels');map.getPane('labels').style.zIndex=350;map.getPane('labels').style.pointerEvents='none';
-    const esri=(svc,o={})=>L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/${svc}/MapServer/tile/{z}/{y}/{x}`,{maxZoom:18,...o});
-    const bases={
-      'Mapa simples':esri(`Canvas/${dark?'World_Dark_Gray_Base':'World_Light_Gray_Base'}`,{attribution:'Mapa-base © Esri',maxZoom:16}),
-      'Ruas':esri('World_Street_Map',{attribution:'Mapa de ruas © Esri, HERE, Garmin, OpenStreetMap'}),
-      'Satélite':L.layerGroup([esri('World_Imagery',{attribution:'Imagens © Esri, Maxar, Earthstar Geographics'}),esri('Reference/World_Boundaries_and_Places',{pane:'labels'})])
-    };
-    bases['Mapa simples'].addTo(map);
-    L.control.layers(bases,null,{collapsed:false,position:'topright'}).addTo(map);
-    layer=L.layerGroup().addTo(map);}
-  layer.clearLayers();const order=['OK','NEAR','WARN','CRIT'];const pts=[...V].sort((a,b)=>order.indexOf(a.tier)-order.indexOf(b.tier));
-  pts.forEach(m=>{const t=TK[m.tier];L.circleMarker([m.la,m.ln],{radius:4+Math.min(10,Math.sqrt(m.gap)*2),color:css('--surface'),weight:1.5,fillColor:css(t.c),fillOpacity:.95})
-    .bindPopup(`<b>${esc(m.mu)}</b> · ${m.uf}<br>População (IBGE 2020): ${nf.format(m.pop)}<br>sites exigidos: <b>${m.req}</b> · Sites ${opn()} licenciados: <b>${m.n}</b><br>${t.i} ${t.l}${m.gap?` · faltam <b>${m.gap}</b>`:''}<br><span style="color:#7a879b">${others().map(o=>`${o.l}: ${m['n_'+o.k]}`).join(' · ')}</span>`).addTo(layer);});
-  if(V.length&&(st.uf||st.rg))map.fitBounds(V.map(m=>[m.la,m.ln]),{padding:[24,24],maxZoom:8});else map.setView([-12,-50],4);
+  const box=document.getElementById('map');lastV=V;
+  if(typeof maplibregl==='undefined'){box.innerHTML='<div class="empty" style="padding:16px">O mapa não carregou porque a biblioteca de mapas não está acessível nesta rede. Os demais blocos funcionam normalmente.</div>';return;}
+  if(!map){
+    map=new maplibregl.Map({container:box,style:BASES[base].style,bounds:BRASIL,fitBoundsOptions:{padding:20},cooperativeGestures:true,attributionControl:{compact:true}});
+    map.addControl(new maplibregl.NavigationControl({showCompass:false}),'top-left');
+    const ctl=document.createElement('div');ctl.className='maplibregl-ctrl maplibregl-ctrl-group base-switch';
+    ctl.innerHTML=Object.entries(BASES).map(([k,b])=>`<label><input type="radio" name="base" value="${k}" ${k===base?'checked':''}> ${b.nome}</label>`).join('');
+    ctl.addEventListener('change',e=>{base=e.target.value;styleOk=false;map.setStyle(BASES[base].style,{diff:false});});
+    map.addControl({onAdd:()=>ctl,onRemove:()=>ctl.remove()},'top-right');
+    map.on('style.load',()=>{styleOk=true;origF={};addPoints();});
+    map.on('styledata',()=>{if(styleOk&&!map.getLayer('mun'))addPoints();});
+    map.on('click','mun',e=>{const m=lastV.find(x=>x.ib===e.features[0].properties.ib);if(m)new maplibregl.Popup({offset:8}).setLngLat(e.lngLat).setHTML(popupHtml(m)).addTo(map);});
+    map.on('mouseenter','mun',()=>map.getCanvas().style.cursor='pointer');
+    map.on('mouseleave','mun',()=>map.getCanvas().style.cursor='');
+  }
+  addPoints();
+  if(V.length&&(st.uf||st.rg)){const b=new maplibregl.LngLatBounds();V.forEach(m=>b.extend([m.ln,m.la]));map.fitBounds(b,{padding:30,maxZoom:8,duration:600});}
+  else map.fitBounds(BRASIL,{padding:20,duration:600});
 }
 
 const tq=document.getElementById('t-q'),tt=document.getElementById('t-tier');
